@@ -1,2 +1,1 @@
-# Spatiotemporal_fusion_algorithm
-Spatiotemporal fusion (STF)
+# Agri-Fuse: A novel spatiotemporal fusion method designed for agricultural scenarios with diverse phenological change
