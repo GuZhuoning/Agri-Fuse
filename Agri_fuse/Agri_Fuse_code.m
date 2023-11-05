@@ -1,5 +1,6 @@
 % This is a code for Agri-Fuse: A novel spatiotemporal fusion method designed for agricultural scenarios with diverse phenological change
 % The authors would like to thank Prof. Xiaolin Zhu, Prof. Qunming Wang for providing the source code of Fit-Fc
+%%%%Gu, Z., Chen, J., Chen, Y., Qiu, Y., Zhu, X., & Chen. X. (2023). “Agri-Fuse: A novel spatiotemporal fusion method designed for agricultural scenarios with diverse phenological changes”. Remote Sensing of Environment, 299, 113874.
 %%%%Q. Wang, P. M. Atkinson. Spatio-temporal fusion for daily Sentinel-2 images. Remote Sensing of Environment, 2018, 204: 31–42.
 %% Read data and set parameters
 clc;clear;
@@ -29,12 +30,12 @@ name2 ='AgriFuse_with_spatial_filter';
 
 %----Segementation parameters---%
 thred_ndvi = 0.24; % to delete the boundary of class map
-num_patch = 500; %minParcel,delete small objects
-maj_perct = 60;  %Thredshold
+num_patch = 500; % To delete small objects less than 500 pixels
+maj_perct = 60;  %The thresholds for the reassignment of the major categories of each band
 %----Fusion parameters----%
 pure_pr = 0.40; % to define a pure pixel helpful for unmixing
 num_pure = 50; %
-w_f = 0; %extend box,defult as 0
+w_f = 0; %extend box strategy,defult as 0
 w_s = 2;
 %---Spatial Filter---%
 w0 = 10;
@@ -49,8 +50,8 @@ C2 = imresize(C2, 1/scale, 'box');
 
 F1_300 = imresize(F1, 1/scale, 'box');
 F2_300 = imresize(F2, 1/scale, 'box');
-%% Segmentation and relass
-%Remove the few types and set them all to 0
+%% Step1: Objected-post processing of the classification results
+%Remove delete small objects
 I = seg_raw(:,:,end);
 count = tabulate(reshape(I,1,[]));
 maj = find(count(:,2) >= num_patch);
@@ -64,10 +65,12 @@ for i = 1:size(maj_value)
     c = c + 1;
 end
 num_seg = size(unique(I_1),1);
-%% Step1: Objected-post processing of the classification results
+
+%to combine the non-crop type into one class
 F1_ndvi = (F1(:,:,4)-F1(:,:,3)) ./ (F1(:,:,4)+F1(:,:,3));
 noVeg_mask_ind = F1_ndvi < thred_ndvi;
-tic
+
+%to reassign of the major categories of each band
 for k = 1:size(new_class,3)
     temp_class = new_class(:,:,k);
     for i = 1:num_seg-1
@@ -88,13 +91,14 @@ for k = 1:size(new_class,3)
             end
         end
     end
-    %ndvi threshold:delete the boundaries or built-up areas
+    
     num_class = size(unique(temp_class),1);
     temp_class(noVeg_mask_ind) = num_class+1;
     new_class(:,:,k) = temp_class;
 end
 
 %% Step2: Unmixing the coefficients
+tic
 C1_0 = F1_300;
 C2_0 = F1_300+ (C2-C1);
 F2_predict = F1;
@@ -172,7 +176,7 @@ toc
 msgbox("finish!")
 
 enviwrite(pagetranspose(F2_predict),strcat(save_path,name1));
-%% Step3: Spatial filter
+%% Step3: Spatial filter !! time-consuming process
 tic
 A=(2*w0+1)/2;
 Z0=zeros(size(F2_predict));
